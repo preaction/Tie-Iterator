@@ -24,6 +24,7 @@ sub TIEHANDLE {
 
 sub generate_to {
     my ( $self, $i ) = @_;
+    $i -= @{ $self->{_cache} };
     while ( my $item = $self->{_iter}->() ) {
         push @{ $self->{_cache} }, $item;
         return unless $i--;
