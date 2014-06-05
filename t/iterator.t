@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Deep;
-use Tie::Iterator;
+use Tie::Iterator qw( list imap igrep isort );
 
 subtest 'while iterator' => sub {
     my $i = 0;
@@ -52,7 +52,7 @@ subtest 'map iterator' => sub {
         return ++$i;
     };
     tie my @iter, 'Tie::Iterator', $iter;
-    my @x = map { $_ * 2 } @iter;
+    my @x = imap { $_ * 2 } @iter;
     cmp_deeply \@x, [ 2, 4, 6, 8, 10 ];
 };
 

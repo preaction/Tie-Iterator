@@ -3,6 +3,13 @@ package Tie::Iterator;
 
 use strict;
 use warnings;
+use feature qw( say );
+use base qw( Exporter );
+our @EXPORT = qw( );
+our @EXPORT_OK = qw( list imap igrep isort :all );
+our %EXPORT_TAGS = (
+    all => [qw( list imap igrep isort )],
+);
 
 sub TIEARRAY {
     my ( $class, $iter ) = @_;
@@ -31,6 +38,38 @@ sub generate_to {
     }
     $self->{_done} = 1;
     return;
+}
+
+sub list(\@) {
+    my ( $ary ) = @_;
+    if ( tied @$ary ) {
+        my @retval;
+        for my $i ( @$ary ) {
+            push @retval, $i;
+        }
+        return @retval;
+    }
+    return @$ary;
+}
+
+sub imap(&\@) {
+    my ( $sub, $ary ) = @_;
+    if ( tied @$ary ) {
+        tie my @retval, 'Tie::Iterator', sub {
+            local $_ = shift @$ary;
+            return $sub->();
+        };
+        return @retval;
+    }
+    return map { local $_ = $_; $sub->() } @$ary;
+}
+
+sub igrep(&\@) {
+    warn "grep()";
+}
+
+sub isort(&\@) {
+    warn "sort()";
 }
 
 package Tie::Iterator::ARRAY;
