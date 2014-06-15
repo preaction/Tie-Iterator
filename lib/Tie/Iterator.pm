@@ -125,3 +125,110 @@ __END__
 
 =head1 DESCRIPTION
 
+This is an attempt to add a more-transparent iterator to Perl. The full solution
+must work transparently in all useful list-type things:
+
+    for my $item ( @iter )
+    map { ... } @iter
+    grep { ... } @iter
+    sort { ... } @iter
+
+=head1 TREATISE
+
+=head2 Why A Core Iterator?
+
+=over
+
+=item while ( defined( my $i = $iter->() ) )
+
+The current iterator pattern is unintuitive and requires a set of iterator-specific
+functions to implement map, grep, and sort.
+
+L<Iterator::Simple> is the best way of doing iterators available on CPAN, but
+it requires a CPAN module and so can only do what CPAN modules can do. This
+isn't itself a reason for adding a core iterator, but it should be considered.
+
+=item A Better for ( <$fh> ) Pattern
+
+New users often try to do a `for` loop over a filehandle and get confused when it
+fails or performs poorly on very large files. Another pattern that must be learned:
+C<while ( my $line = <$fh> )>.
+
+An "iterable" filehandle would allow while and for to be treated equally.
+
+=item Cannot be implemented on CPAN.
+
+This module is an attempt to use C<tie> to make an array that had an iterator
+underneath. It fails because tied arrays cannot be returned from subs, since
+only lists are allowed to be returned from subs.
+
+It would work with an arrayref, but this is not transparent, and as soon as the
+array being referenced is given to C<map>, C<grep>, C<for>, C<sort>, or otherwise,
+the array is reduced to a list, which will run the iterator until exhaustion.
+
+Solving that problem doesn't make everything work, because an array must know
+exactly how big they are before C<map> or C<grep> will work on them. See
+t/iterator.t 'map iterator' for a failing test for this.  Since C<for> allows
+modification of the array during iteration, tied arrays work just fine.
+
+=back
+
+=head2 Possible Syntax
+
+=item Magic "iterable" flag on @array
+
+If the magic flag is there, @array is really either a sub or a filehandle.
+
+This is both the most magic and the least amount of user work.
+
+=over
+
+=item use feature qw( iterator ); my @iter = iterator { };
+
+@array is now backed by an iterator.
+
+C<gather> is not used as the function name because we are not implementing
+C<take>.
+
+=item use feature qw( iterator ); my @iter = iterator $fh;
+
+If the C<iterator> gets a C<GLOB> or L<IO::Handle>, it does the right thing.
+
+In fact, most of L<Iterator::Simple>'s functionality could work this way.
+
+=item open my @fh, '<', 'FILENAME'
+
+@fh is now an iterable filehandle according to C<$/> at the time of reading
+the next line.
+
+This is currently allowed (is not a syntax error), and under C<no strict "refs">
+creates a filehandle called "0".
+
+=back
+
+=item <@array>
+
+This is already used as a glob() operation, so this would be a backwards-
+incompatible change. Evil.
+
+=item @&array or &@array
+
+The first one is a syntax error currently. The second can sometimes be
+interpreted as bitwise-C<& @array>.
+
+=back
+
+=head2 Difficulties
+
+=over
+
+=item *
+
+XS code that works with arrays may need to handle iterables differently,
+especially with the magic version.
+
+This would break the abstraction quite impressively, and a leaky abstraction
+is frequently worse than no abstraction at all...
+
+=back
+
